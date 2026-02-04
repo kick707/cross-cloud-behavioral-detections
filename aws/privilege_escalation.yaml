@@ -1,1 +1,66 @@
+id: aws-privilege-escalation-behavioral
+title: AWS IAM Privilege Escalation – Behavioral Detection
+cloud: aws
+log_source: cloudtrail
+severity: high
+status: active
+
+description: >
+  Detects potential privilege escalation behavior in AWS by identifying
+  high-risk IAM changes performed by identities that do not typically
+  manage permissions, especially when followed by role assumption
+  or access expansion.
+
+rationale: >
+  In real-world AWS compromises, attackers frequently escalate privileges
+  by attaching policies, modifying role trust relationships, or creating
+  new access paths using legitimate IAM APIs. These actions are rarely
+  isolated and often precede broader environment access.
+
+detection:
+  selection:
+    eventSource: iam.amazonaws.com
+    eventName:
+      - AttachUserPolicy
+      - AttachRolePolicy
+      - PutUserPolicy
+      - PutRolePolicy
+      - CreatePolicyVersion
+      - UpdateAssumeRolePolicy
+      - AddUserToGroup
+
+  behavioral_conditions:
+    - condition: actor_not_in_iam_admin_baseline
+    - condition: action_rare_for_principal
+    - condition: performed_outside_business_hours
+
+  followed_by:
+    eventName:
+      - AssumeRole
+      - GetCallerIdentity
+      - ListRoles
+      - ListAttachedRolePolicies
+    timeframe: 30m
+
+false_positives:
+  - Newly onboarded administrators
+  - Infrastructure-as-Code deployments
+  - Emergency access changes during incidents
+
+tuning_guidance:
+  - Maintain a baseline of principals authorized to manage IAM
+  - Exclude known CI/CD and IaC execution roles
+  - Increase severity when changes affect high-privilege roles
+
+attack_techniques:
+  - Privilege Escalation
+  - Persistence
+  - Defense Evasion
+
+confidence: high
+
+notes: >
+  Privilege escalation in AWS is rarely noisy. Detection quality improves
+  significantly when IAM change events are correlated with subsequent
+  access or role assumption behavior.
 
