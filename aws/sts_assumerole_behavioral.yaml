@@ -1,1 +1,62 @@
+id: aws-sts-assumerole-behavioral
+title: AWS STS AssumeRole – Behavioral Anomaly Detection
+cloud: aws
+log_source: cloudtrail
+severity: high
+status: active
+
+description: >
+  Detects anomalous AWS STS AssumeRole activity based on identity behavior,
+  source context, and post-assumption actions. The detection is designed to
+  identify role assumption that deviates from established baselines and is
+  followed by enumeration or access expansion.
+
+rationale: >
+  AssumeRole is a legitimate and heavily used AWS operation, but it is also
+  a common pivot point for attackers after credential compromise. Abnormal
+  role assumption, especially when followed by discovery or access activity,
+  is a strong indicator of identity abuse.
+
+detection:
+  selection:
+    eventSource: sts.amazonaws.com
+    eventName: AssumeRole
+
+  behavioral_conditions:
+    - condition: role_not_frequently_assumed_by_principal
+    - condition: source_ip_not_in_baseline
+    - condition: assumed_outside_business_hours
+
+  followed_by:
+    eventSource:
+      - iam.amazonaws.com
+      - ec2.amazonaws.com
+      - s3.amazonaws.com
+    eventName:
+      - List*
+      - Describe*
+      - Get*
+    timeframe: 15m
+
+false_positives:
+  - New automation or CI/CD pipelines
+  - Recently onboarded engineers
+  - Third-party integrations assuming roles for the first time
+
+tuning_guidance:
+  - Baseline AssumeRole frequency per principal and role
+  - Maintain allowlists for known CI/CD and integration roles
+  - Increase severity when the assumed role has administrative permissions
+
+attack_techniques:
+  - Credential Access
+  - Privilege Escalation
+  - Discovery
+
+confidence: high
+
+notes: >
+  Detection effectiveness improves significantly when correlated with
+  subsequent enumeration or access activity. Isolated AssumeRole events
+  are rarely sufficient indicators on their own.
 
