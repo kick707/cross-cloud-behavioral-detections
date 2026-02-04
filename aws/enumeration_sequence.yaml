@@ -1,1 +1,70 @@
+id: aws-enumeration-sequence-behavioral
+title: AWS Enumeration Followed by Access Expansion
+cloud: aws
+log_source: cloudtrail
+severity: medium-high
+status: active
+
+description: >
+  Detects suspicious enumeration behavior in AWS where identity-driven
+  discovery activity is followed by access attempts or role usage.
+  The detection is designed to identify reconnaissance activity that
+  precedes lateral movement or privilege abuse.
+
+rationale: >
+  Attackers operating in AWS environments typically begin by enumerating
+  available services, identities, and permissions using legitimate APIs.
+  Enumeration alone is often noisy and common, but when it is closely
+  followed by access or role assumption activity, it becomes a strong
+  behavioral indicator of compromise.
+
+detection:
+  enumeration_activity:
+    eventSource:
+      - iam.amazonaws.com
+      - ec2.amazonaws.com
+      - s3.amazonaws.com
+    eventName:
+      - List*
+      - Describe*
+      - Get*
+
+  behavioral_conditions:
+    - condition: enumeration_rate_above_baseline
+    - condition: enumeration_from_new_source
+    - condition: performed_outside_business_hours
+
+  followed_by:
+    eventSource:
+      - sts.amazonaws.com
+      - s3.amazonaws.com
+      - ec2.amazonaws.com
+    eventName:
+      - AssumeRole
+      - GetObject
+      - PutObject
+      - RunInstances
+    timeframe: 20m
+
+false_positives:
+  - Infrastructure-as-Code discovery phases
+  - Automated inventory or monitoring tools
+  - Cloud security posture management scans
+
+tuning_guidance:
+  - Baseline normal enumeration frequency per principal
+  - Exclude known automation and CSPM roles
+  - Increase severity when enumeration targets IAM resources
+
+attack_techniques:
+  - Discovery
+  - Lateral Movement
+  - Privilege Escalation
+
+confidence: medium-high
+
+notes: >
+  Enumeration is a natural part of AWS operations. Detection quality
+  improves significantly when enumeration is correlated with subsequent
+  access attempts or role usage within a short timeframe.
 
